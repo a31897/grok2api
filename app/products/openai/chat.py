@@ -35,6 +35,10 @@ from app.dataplane.reverse.protocol.xai_chat import (
     classify_line,
     StreamAdapter,
 )
+from app.dataplane.reverse.protocol.xai_responses import (
+    is_console_responses_mode,
+    stream_console_responses,
+)
 from app.dataplane.reverse.protocol.xai_usage import is_invalid_credentials_error
 from app.dataplane.reverse.runtime.endpoint_table import CHAT
 from app.dataplane.reverse.transport.asset_upload import upload_from_input
@@ -392,6 +396,20 @@ async def _stream_chat(
     """Yield raw SSE lines from the Grok app-chat endpoint."""
     proxy = await get_proxy_runtime()
     lease = await proxy.acquire()
+
+    if is_console_responses_mode(mode_id, mode_name):
+        async for line in stream_console_responses(
+            token=token,
+            model=mode_name or mode_id.to_api_str(),
+            message=message,
+            files=files,
+            request_overrides=request_overrides,
+            timeout_s=timeout_s,
+            lease=lease,
+        ):
+            yield line
+        return
+
     attachments = await _prepare_file_attachments(token, files)
 
     payload = build_chat_payload(

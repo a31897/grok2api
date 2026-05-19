@@ -8,11 +8,15 @@ NOTE: gRPC-Web endpoints (accept_tos, nsfw_mgmt) live on different
 hosts (accounts.x.ai, grok.com with gRPC path), listed separately.
 """
 
-BASE       = "https://grok.com"
-ASSETS_CDN = "https://assets.grok.com"
+BASE         = "https://grok.com"
+CONSOLE_BASE = "https://console.x.ai"
+ASSETS_CDN   = "https://assets.grok.com"
 
 # ── App-chat (SSE streaming, new conversation) ──────────────────────────
 CHAT              = f"{BASE}/rest/app-chat/conversations/new"
+
+# ── Console Responses API (Grok 4.3) ───────────────────────────────────
+CONSOLE_RESPONSES = f"{CONSOLE_BASE}/v1/responses"
 
 # ── Asset management ─────────────────────────────────────────────────────
 ASSETS_UPLOAD     = f"{BASE}/rest/app-chat/upload-file"        # POST (base64 upload)
@@ -44,8 +48,8 @@ LIVEKIT_TOKENS    = f"{BASE}/rest/livekit/tokens"              # POST
 
 
 __all__ = [
-    "BASE", "ASSETS_CDN",
-    "CHAT",
+    "BASE", "CONSOLE_BASE", "ASSETS_CDN",
+    "CHAT", "CONSOLE_RESPONSES",
     "ASSETS_UPLOAD", "ASSETS_LIST", "ASSETS_DELETE", "ASSETS_DOWNLOAD",
     "RATE_LIMITS",
     "ACCEPT_TOS", "NSFW_MGMT", "SET_BIRTH",
