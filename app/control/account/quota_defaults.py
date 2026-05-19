@@ -3,7 +3,7 @@
 Canonical quota totals per pool type (from upstream rate-limits API):
 
               auto    fast    expert    heavy    grok_4_3
-  basic          —      30       —        —         —        window: 86400 s
+  basic          —      30       —        —        50        window: 86400 s / 7200 s
   super         50     140      50        —        50        window: 7200 s
   heavy        150     400     150       20       150        window: 7200 s
 
@@ -42,11 +42,18 @@ def _w(remaining: int, total: int, window_seconds: int) -> QuotaWindow:
 
 BASIC_FAST_LIMIT = 30
 BASIC_FAST_WINDOW_SECONDS = 86_400
+BASIC_GROK_4_3_LIMIT = 50
+BASIC_GROK_4_3_WINDOW_SECONDS = 7_200
 
 BASIC_QUOTA_DEFAULTS = AccountQuotaSet(
     auto=_w(0, 0, 0),  # unsupported on basic accounts
     fast=_w(BASIC_FAST_LIMIT, BASIC_FAST_LIMIT, BASIC_FAST_WINDOW_SECONDS),
     expert=_w(0, 0, 0),  # unsupported on basic accounts
+    grok_4_3=_w(
+        BASIC_GROK_4_3_LIMIT,
+        BASIC_GROK_4_3_LIMIT,
+        BASIC_GROK_4_3_WINDOW_SECONDS,
+    ),
 )
 
 SUPER_QUOTA_DEFAULTS = AccountQuotaSet(
@@ -72,7 +79,7 @@ _POOL_DEFAULTS: dict[str, AccountQuotaSet] = {
 }
 
 _SUPPORTED_MODE_IDS_BY_POOL: dict[str, frozenset[int]] = {
-    "basic": frozenset((1,)),
+    "basic": frozenset((1, 4)),
     "super": frozenset((0, 1, 2, 4)),
     "heavy": frozenset((0, 1, 2, 3, 4)),
 }
@@ -142,6 +149,15 @@ def normalize_quota_window(
             synced_at=window.synced_at,
             source=window.source,
         )
+    if pool == "basic" and mode_id == 4:
+        return QuotaWindow(
+            remaining=max(0, min(int(window.remaining), BASIC_GROK_4_3_LIMIT)),
+            total=BASIC_GROK_4_3_LIMIT,
+            window_seconds=BASIC_GROK_4_3_WINDOW_SECONDS,
+            reset_at=window.reset_at,
+            synced_at=window.synced_at,
+            source=window.source,
+        )
     return window
 
 
@@ -156,6 +172,8 @@ def normalize_quota_set(pool: str, quota_set: AccountQuotaSet) -> AccountQuotaSe
     qs = AccountQuotaSet(auto=auto, fast=fast, expert=expert)
     qs.heavy = normalize_quota_window(pool, 3, quota_set.heavy)
     qs.grok_4_3 = normalize_quota_window(pool, 4, quota_set.grok_4_3)
+    if qs.grok_4_3 is None and supports_mode(pool, 4):
+        qs.grok_4_3 = defaults.grok_4_3
     return qs
 
 
@@ -173,6 +191,8 @@ def infer_pool(windows: dict[int, QuotaWindow]) -> str:
 
 __all__ = [
     "BASIC_QUOTA_DEFAULTS",
+    "BASIC_GROK_4_3_LIMIT",
+    "BASIC_GROK_4_3_WINDOW_SECONDS",
     "SUPER_QUOTA_DEFAULTS",
     "HEAVY_QUOTA_DEFAULTS",
     "default_quota_set",

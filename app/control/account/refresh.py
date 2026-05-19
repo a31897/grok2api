@@ -79,7 +79,7 @@ class AccountRefreshService:
         """Fetch quota windows for every mode supported by *pool*.
 
         Examples:
-          - basic -> fast
+          - basic -> fast / grok_4_3
           - super -> auto / fast / expert / grok_4_3
           - heavy -> auto / fast / expert / heavy / grok_4_3
         """

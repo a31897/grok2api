@@ -211,7 +211,7 @@ def _record_to_patch(r) -> "AccountPatch":
 
 
 # ---------------------------------------------------------------------------
-# Backfill quota_grok_4_3 for super/heavy accounts imported before the field existed.
+# Backfill quota_grok_4_3 for accounts imported before the field existed.
 # ---------------------------------------------------------------------------
 
 async def _backfill_grok_4_3_quota(repo: "AccountRepository") -> None:
@@ -225,7 +225,7 @@ async def _backfill_grok_4_3_quota(repo: "AccountRepository") -> None:
             ListAccountsQuery(page=page, page_size=_BATCH, include_deleted=False)
         )
         for record in result.items:
-            if record.pool not in ("super", "heavy"):
+            if record.pool not in ("basic", "super", "heavy"):
                 continue
             if record.quota_set().grok_4_3 is not None:
                 continue
@@ -245,7 +245,7 @@ async def _backfill_grok_4_3_quota(repo: "AccountRepository") -> None:
         batch = patches[i : i + _BATCH]
         res = await repo.patch_accounts(batch)
         total += res.patched
-    logger.info("account: backfilled quota_grok_4_3 for {} super/heavy accounts", total)
+    logger.info("account: backfilled quota_grok_4_3 for {} accounts", total)
 
 
 async def _normalize_basic_fast_only_quota(repo: "AccountRepository") -> None:
@@ -273,6 +273,11 @@ async def _normalize_basic_fast_only_quota(repo: "AccountRepository") -> None:
                     quota_auto=normalized.auto.to_dict(),
                     quota_fast=normalized.fast.to_dict(),
                     quota_expert=normalized.expert.to_dict(),
+                    quota_grok_4_3=(
+                        normalized.grok_4_3.to_dict()
+                        if normalized.grok_4_3 is not None
+                        else None
+                    ),
                 )
             )
         if page >= result.total_pages:
@@ -287,7 +292,7 @@ async def _normalize_basic_fast_only_quota(repo: "AccountRepository") -> None:
         batch = patches[i : i + _BATCH]
         res = await repo.patch_accounts(batch)
         total += res.patched
-    logger.info("account: normalized {} basic accounts to fast-only quota", total)
+    logger.info("account: normalized {} basic accounts to supported quota windows", total)
 
 
 # ---------------------------------------------------------------------------
