@@ -17,6 +17,7 @@ def build_chat_payload(
     *,
     message:               str,
     mode_id:               ModeId,
+    mode_name:             str | None      = None,
     file_attachments:      list[str]        = (),
     tool_overrides:        dict[str, Any]   | None = None,
     model_config_override: dict[str, Any]   | None = None,
@@ -24,6 +25,7 @@ def build_chat_payload(
 ) -> dict[str, Any]:
     """Build the JSON payload for POST /rest/app-chat/conversations/new."""
     cfg = get_config()
+    upstream_mode_name = mode_name or mode_id.to_api_str()
 
     payload: dict[str, Any] = {
         "collectionIds":               [],
@@ -50,7 +52,7 @@ def build_chat_payload(
         "imageGenerationCount":        2,
         "isAsyncChat":                 False,
         "message":                     message,
-        "modeId":                      mode_id.to_api_str(),
+        "modeId":                      upstream_mode_name,
         "responseMetadata":            {},
         "returnImageBytes":            False,
         "returnRawGrokInXaiRequest":   False,
@@ -78,7 +80,7 @@ def build_chat_payload(
 
     logger.debug(
         "chat payload built: mode={} message_len={} file_count={}",
-        mode_id.to_api_str(), len(message), len(file_attachments),
+        payload.get("modeId"), len(message), len(file_attachments),
     )
     return payload
 

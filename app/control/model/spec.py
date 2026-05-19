@@ -20,6 +20,9 @@ class ModelSpec:
     ``public_name`` is the human-readable display name.
     ``prefer_best`` when True, reverses pool priority to try higher-tier
                     pools first (hard priority, not soft preference).
+    ``upstream_mode_name`` overrides the upstream ``modeId`` payload string.
+                    When unset, the selected numeric mode is converted by
+                    :meth:`ModeId.to_api_str`.
     """
 
     model_name: str
@@ -29,6 +32,7 @@ class ModelSpec:
     enabled: bool
     public_name: str
     prefer_best: bool = False
+    upstream_mode_name: str | None = None
 
     # --- convenience predicates ---
 
@@ -58,6 +62,13 @@ class ModelSpec:
     def pool_id(self) -> int:
         """Return the integer PoolId for the dataplane account table."""
         return int(self.tier)
+
+    def api_mode_name(self, selected_mode_id: int | ModeId | None = None) -> str:
+        """Return the upstream ``modeId`` string for one selected account mode."""
+        if self.upstream_mode_name:
+            return self.upstream_mode_name
+        mode = self.mode_id if selected_mode_id is None else ModeId(int(selected_mode_id))
+        return mode.to_api_str()
 
     # 返回按优先级排序的候选池 ID
     def pool_candidates(self) -> tuple[int, ...]:

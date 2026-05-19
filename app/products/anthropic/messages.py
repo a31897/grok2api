@@ -369,6 +369,7 @@ async def create(
                         mode_id   = ModeId(selected_mode_id),
                         message   = internal_message,
                         files     = files,
+                        mode_name = spec.api_mode_name(selected_mode_id),
                         timeout_s = timeout_s,
                     ):
                         if tool_calls_emitted:
@@ -651,6 +652,7 @@ async def create(
                     mode_id   = ModeId(selected_mode_id),
                     message   = internal_message,
                     files     = files,
+                    mode_name = spec.api_mode_name(selected_mode_id),
                     timeout_s = timeout_s,
                 ):
                     event_type, data = classify_line(line)

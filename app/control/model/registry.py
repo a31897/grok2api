@@ -32,9 +32,12 @@ MODELS: tuple[ModelSpec, ...] = (
     ModelSpec("grok-4.20-expert",                       ModeId.EXPERT,   Tier.SUPER, Capability.CHAT,       True, "Grok 4.20 Expert",        prefer_best=True),
     ModelSpec("grok-4.20-heavy",                        ModeId.HEAVY,    Tier.HEAVY, Capability.CHAT,       True, "Grok 4.20 Heavy",         prefer_best=True),
 
-    # === grok-4.3 (grok-420-computer-use-sa) ==================================
-    # Super+（basic 池不支持此模式）
-    ModelSpec("grok-4.3-beta",                          ModeId.GROK_4_3, Tier.SUPER, Capability.CHAT,       True, "Grok 4.3 Beta"),
+    # === grok-4.3 =============================================================
+    # Super+（basic 池不支持此模式）. These model IDs are passed through as-is to
+    # the upstream Grok/console payload instead of using a legacy mode alias.
+    ModelSpec("grok-4.3-beta",                          ModeId.GROK_4_3, Tier.SUPER, Capability.CHAT,       True, "Grok 4.3 Beta",           upstream_mode_name="grok-4.3-beta"),
+    ModelSpec("grok-4.3",                               ModeId.GROK_4_3, Tier.SUPER, Capability.CHAT,       True, "Grok 4.3",                upstream_mode_name="grok-4.3"),
+    ModelSpec("grok4.3",                                ModeId.GROK_4_3, Tier.SUPER, Capability.CHAT,       True, "Grok 4.3 (Compat Alias)", upstream_mode_name="grok4.3"),
 
     # === Image ==============================================================
 

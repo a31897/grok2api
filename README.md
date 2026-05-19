@@ -242,7 +242,9 @@ docker compose up -d
 | `grok-4.20-auto` | `auto` | `super`，优先使用高等级账号池 |
 | `grok-4.20-expert` | `expert` | `super`，优先使用高等级账号池 |
 | `grok-4.20-heavy` | `heavy` | `heavy` |
-| `grok-4.3-beta` | `grok-420-computer-use-sa` | `super` |
+| `grok-4.3-beta` | `grok-4.3-beta` | `super` |
+| `grok-4.3` | `grok-4.3` | `super` |
+| `grok4.3` | `grok4.3` | `super` |
 
 ### Image
 
