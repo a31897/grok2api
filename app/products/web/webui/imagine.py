@@ -31,14 +31,53 @@ async def _acquire_token():
     spec = get_model("grok-imagine-image")
     if spec is None:
         return None, None
-    acct = await _acct_dir.reserve(
-        pool_candidates=spec.pool_candidates(),
-        mode_id=int(spec.mode_id),
+    acct = await _acct_dir.reserve_any(
+        spec.pool_candidates(),
         now_s_override=now_s(),
     )
     if acct is None:
         return None, None
     return acct.token, acct
+
+
+async def _run_lite_fallback(prompt: str, count: int, run_id: str, send) -> bool:
+    from app.products.openai.images import generate
+
+    result = await generate(
+        model="grok-imagine-image-lite",
+        prompt=prompt,
+        n=count,
+        size="1024x1024",
+        response_format="url",
+        stream=False,
+        chat_format=False,
+    )
+    data = result.get("data", []) if isinstance(result, dict) else []
+    emitted = 0
+    for index, item in enumerate(data):
+        if not isinstance(item, dict):
+            continue
+        url = str(item.get("url") or "").strip()
+        if not url:
+            continue
+        emitted += 1
+        await send({
+            "type": "image",
+            "url": url,
+            "order": index,
+            "is_final": True,
+            "run_id": run_id,
+        })
+    if emitted <= 0:
+        return False
+    await send({
+        "type": "status",
+        "status": "completed",
+        "run_id": run_id,
+        "count": emitted,
+        "fallback": "grok-imagine-image-lite",
+    })
+    return True
 
 
 def _extract_token(value: str | None) -> str:
@@ -125,11 +164,13 @@ async def imagine_ws(websocket: WebSocket):
         try:
             token, acct = await _acquire_token()
             if not token:
-                await _send({
-                    "type": "error",
-                    "message": "No available accounts for this model tier",
-                    "code": "rate_limit_exceeded",
-                })
+                ok = await _run_lite_fallback(prompt, count, run_id, _send)
+                if not ok:
+                    await _send({
+                        "type": "error",
+                        "message": "No available accounts for image generation",
+                        "code": "rate_limit_exceeded",
+                    })
                 return
 
             enable_nsfw = nsfw if nsfw is not None else get_config().get_bool("features.enable_nsfw", True)

@@ -9,7 +9,6 @@ import orjson
 from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
 
-from app.control.account.state_machine import is_manageable
 from app.platform.auth.middleware import (
     allowed_models_for_request,
     enforce_model_access,
@@ -20,7 +19,10 @@ from app.platform.logging.logger import logger
 from app.platform.storage import image_files_dir, video_files_dir
 from app.control.model import registry as model_registry
 from app.control.model.spec import ModelSpec
-from app.control.account.quota_defaults import supports_mode
+from app.products.model_availability import (
+    active_pools_for_request,
+    model_available_for_pools,
+)
 from .schemas import (
     ChatCompletionRequest,
     ImageGenerationRequest,
@@ -31,33 +33,12 @@ from .schemas import (
 from .chat import completions as chat_completions
 
 router = APIRouter(prefix="/v1")
-_POOL_ID_TO_NAME = {0: "basic", 1: "super", 2: "heavy"}
 _TAG_MODELS = "OpenAI - Models"
 _TAG_CHAT = "OpenAI - Chat"
 _TAG_RESPONSES = "OpenAI - Responses"
 _TAG_IMAGES = "OpenAI - Images"
 _TAG_VIDEOS = "OpenAI - Videos"
 _TAG_FILES = "OpenAI - Files"
-
-
-async def _available_pools(request: Request) -> frozenset[str]:
-    repo = getattr(request.app.state, "repository", None)
-    if repo is None:
-        return frozenset()
-
-    snapshot = await repo.runtime_snapshot()
-    pools = {record.pool for record in snapshot.items if is_manageable(record)}
-    return frozenset(pools)
-
-
-def _model_available_for_pools(spec: ModelSpec, pools: frozenset[str]) -> bool:
-    if not spec.enabled:
-        return False
-    for pool_id in spec.pool_candidates():
-        pool = _POOL_ID_TO_NAME[pool_id]
-        if pool in pools and supports_mode(pool, int(spec.mode_id)):
-            return True
-    return False
 
 
 def _model_allowed_for_request(request: Request, spec: ModelSpec) -> bool:
@@ -74,7 +55,7 @@ def _model_allowed_for_request(request: Request, spec: ModelSpec) -> bool:
 async def list_models(request: Request):
     import time
 
-    pools = await _available_pools(request)
+    pools = await active_pools_for_request(request)
     models = [
         {
             "id": m.model_name,
@@ -84,7 +65,7 @@ async def list_models(request: Request):
             "name": m.public_name,
         }
         for m in model_registry.list_enabled()
-        if _model_available_for_pools(m, pools) and _model_allowed_for_request(request, m)
+        if model_available_for_pools(m, pools) and _model_allowed_for_request(request, m)
     ]
     return JSONResponse({"object": "list", "data": models})
 
@@ -96,8 +77,8 @@ async def get_model_endpoint(model_id: str, request: Request):
     import time
 
     spec = model_registry.get(model_id)
-    pools = await _available_pools(request)
-    if spec is None or not _model_available_for_pools(spec, pools) or not _model_allowed_for_request(request, spec):
+    pools = await active_pools_for_request(request)
+    if spec is None or not model_available_for_pools(spec, pools) or not _model_allowed_for_request(request, spec):
         return JSONResponse(
             {
                 "error": {

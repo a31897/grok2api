@@ -7,6 +7,10 @@ from fastapi.responses import JSONResponse
 
 from app.control.model import registry as model_registry
 from app.platform.auth.middleware import allowed_models_for_request, verify_webui_key
+from app.products.model_availability import (
+    active_pools_for_request,
+    model_available_for_pools,
+)
 from app.products.openai.router import chat_completions_endpoint
 from app.products.openai.schemas import ChatCompletionRequest
 
@@ -26,6 +30,7 @@ def _capability_name(spec) -> str:
 @router.get("/models")
 async def list_webui_models(request: Request):
     allowed = allowed_models_for_request(request)
+    pools = await active_pools_for_request(request)
     models = [
         {
             "id": spec.model_name,
@@ -36,7 +41,8 @@ async def list_webui_models(request: Request):
             "capability": _capability_name(spec),
         }
         for spec in model_registry.list_enabled()
-        if allowed is None or spec.model_name in allowed
+        if model_available_for_pools(spec, pools)
+        and (allowed is None or spec.model_name in allowed)
     ]
     return JSONResponse({"object": "list", "data": models})
 

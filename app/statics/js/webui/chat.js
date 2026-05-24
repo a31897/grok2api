@@ -777,6 +777,7 @@
     const label = sending
       ? text('webui.chat.stop', 'Stop')
       : text('webui.chat.send', 'Send');
+    sendBtn.disabled = !sending && availableModels.length === 0;
     sendBtn.removeAttribute('data-i18n');
     sendBtn.setAttribute('aria-label', label);
     sendBtn.setAttribute('title', label);
@@ -788,7 +789,7 @@
   function setSending(next) {
     sending = next;
     promptInput.disabled = next;
-    modelSelect.disabled = next;
+    modelSelect.disabled = next || availableModels.length === 0;
     if (systemInput) systemInput.disabled = next;
     renderSendButton();
   }
@@ -1463,6 +1464,17 @@
     const ids = items.map((item) => item && item.id).filter(Boolean);
 
     modelSelect.innerHTML = '';
+    if (!availableModels.length) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = text('webui.chat.noAvailableModels', 'No available models');
+      modelSelect.appendChild(opt);
+      modelSelect.value = '';
+      modelSelect.disabled = true;
+      setStatus(text('webui.chat.noAvailableModels', 'No available models'));
+      renderSendButton();
+      return;
+    }
     availableModels.forEach((item) => {
       const opt = document.createElement('option');
       opt.value = item.id;
@@ -1470,6 +1482,8 @@
       modelSelect.appendChild(opt);
     });
     modelSelect.value = ids.includes(PREFERRED_MODEL) ? PREFERRED_MODEL : (ids[0] || PREFERRED_MODEL);
+    modelSelect.disabled = sending;
+    renderSendButton();
   }
 
   async function sendMessage() {
@@ -1477,6 +1491,10 @@
 
     const prompt = (promptInput.value || '').trim();
     const capability = currentModelCapability();
+    if (!availableModels.length || !modelSelect.value) {
+      toast(text('webui.chat.errors.noAvailableModels', 'No available models'), 'error');
+      return;
+    }
     if (!prompt) {
       toast(text('webui.chat.errors.enterPrompt', 'Please enter a message'), 'error');
       return;
