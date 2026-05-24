@@ -11,9 +11,11 @@
     "continue": "继续",
     "webuiPageTitle": "Grok2API - WebUI",
     "webuiTitle": "WebUI",
-    "webuiSubtitle": "请输入访问密钥",
+    "webuiSubtitle": "请使用 Linux.do 账号登录",
     "webuiPlaceholder": "访问密钥",
     "enter": "进入",
+    "linuxdoLogin": "使用 Linux.do 登录",
+    "linuxdoDisabled": "Linux.do 登录未配置",
     "goToAdmin": "进入管理后台"
   },
   "header": {

@@ -11,9 +11,11 @@
     "continue": "Continuar",
     "webuiPageTitle": "Grok2API - WebUI",
     "webuiTitle": "WebUI",
-    "webuiSubtitle": "Introduzca la clave de acceso",
+    "webuiSubtitle": "Inicia sesión con tu cuenta de Linux.do",
     "webuiPlaceholder": "Clave de acceso",
     "enter": "Entrar",
+    "linuxdoLogin": "Iniciar sesión con Linux.do",
+    "linuxdoDisabled": "El inicio de sesión con Linux.do no está configurado",
     "goToAdmin": "Ir al Panel de Administración"
   },
   "webui": {

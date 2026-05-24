@@ -2,8 +2,9 @@
   const VERIFY_ENDPOINT = '/webui/api/verify';
   const MODELS_ENDPOINT = '/webui/api/models';
   const CHAT_ENDPOINT = '/webui/api/chat/completions';
+  const USER_ME_ENDPOINT = '/user/api/me';
   const PREFERRED_MODEL = 'grok-4.20-0309-non-reasoning';
-  const STORE_KEY = 'grok2api_webui_chat_sessions_v1';
+  const BASE_STORE_KEY = 'grok2api_webui_chat_sessions_v1';
   const SIDEBAR_STORE_KEY = 'grok2api_webui_sidebar_collapsed_v1';
 
   const chatLayout = document.getElementById('chatLayout');
@@ -38,6 +39,7 @@
   let sidebarCollapsed = false;
   let availableModels = [];
   let activeEdit = null;
+  let storeKey = BASE_STORE_KEY;
   const PROMPT_MIN_HEIGHT = 36;
   const PROMPT_MAX_HEIGHT = 108;
   let pendingThreadScrollFrame = 0;
@@ -587,7 +589,7 @@
 
   function loadStore() {
     try {
-      const raw = localStorage.getItem(STORE_KEY);
+      const raw = localStorage.getItem(storeKey);
       if (!raw) return { sessions: [], currentSessionId: '' };
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) return { sessions: parsed, currentSessionId: parsed[0] && parsed[0].id || '' };
@@ -612,7 +614,7 @@
           }))
         : [],
     }));
-    localStorage.setItem(STORE_KEY, JSON.stringify({ sessions: serializedSessions, currentSessionId }));
+    localStorage.setItem(storeKey, JSON.stringify({ sessions: serializedSessions, currentSessionId }));
   }
 
   function applySidebarState() {
@@ -744,6 +746,18 @@
     if (await verifyKey(VERIFY_ENDPOINT, '')) return true;
     location.href = '/webui/login';
     return false;
+  }
+
+  async function initUserStoreScope() {
+    try {
+      const res = await fetch(USER_ME_ENDPOINT, { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = await res.json();
+      const userId = data && data.user && data.user.id ? String(data.user.id) : '';
+      if (!userId) return;
+      const safeUserId = userId.replace(/[^a-zA-Z0-9_.:-]/g, '_');
+      storeKey = `${BASE_STORE_KEY}:${safeUserId}`;
+    } catch {}
   }
 
   function setStatus(textValue) {
@@ -1646,6 +1660,7 @@
     renderSendButton();
     window.I18n?.onReady?.(renderSendButton);
     if (!await ensureAccess()) return;
+    await initUserStoreScope();
     loadSidebarState();
     await loadModels();
     restoreSessions();

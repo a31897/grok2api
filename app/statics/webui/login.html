@@ -19,11 +19,10 @@
         </a>
       </div>
       <div class="login-title" data-i18n="login.webuiTitle">WebUI</div>
-      <div class="login-subtitle" data-i18n="login.webuiSubtitle">请输入访问密钥</div>
+      <div class="login-subtitle" data-i18n="login.webuiSubtitle">请使用 Linux.do 账号登录</div>
       <div class="login-form">
-        <input type="password" id="key" placeholder="访问密钥" data-i18n-placeholder="login.webuiPlaceholder" class="input" style="height:32px;font-size:12px">
-        <button onclick="login()" class="btn btn-primary w-full" style="font-size:12px" data-i18n="login.enter">进入</button>
-        <button onclick="linuxdoLogin()" id="linuxdoBtn" class="btn btn-ghost w-full" style="font-size:12px;display:none" type="button">使用 Linux.do 登录</button>
+        <button onclick="linuxdoLogin()" id="linuxdoBtn" class="btn btn-primary w-full" style="font-size:12px;display:none" type="button" data-i18n="login.linuxdoLogin">使用 Linux.do 登录</button>
+        <div id="loginHint" class="text-xs text-muted" style="display:none;text-align:center" data-i18n="login.linuxdoDisabled">Linux.do 登录未配置</div>
       </div>
     </div>
   </div>
@@ -32,17 +31,7 @@
   <script src="/static/js/toast.js?v={{APP_VERSION}}"></script>
   <script src="/static/js/footer.js?v={{APP_VERSION}}"></script>
   <script>
-    const el = document.getElementById('key');
-    el.addEventListener('keypress', e => { if (e.key === 'Enter') login(); });
     const VERIFY = WEBUI_API+'/verify';
-
-    async function login() {
-      const key = el.value.trim();
-      try {
-        if (await verifyKey(VERIFY, key)) { await webuiKey.set(key); location.href='/webui/chat'; }
-        else showToast(t('common.invalidKey'), 'error');
-      } catch { showToast(t('common.connectionFailed'), 'error'); }
-    }
 
     function linuxdoLogin() {
       location.href = '/auth/linuxdo/login?next=/webui/chat';
@@ -52,9 +41,8 @@
       try {
         const status = await fetch('/auth/linuxdo/status').then(r => r.ok ? r.json() : {enabled:false}).catch(() => ({enabled:false}));
         document.getElementById('linuxdoBtn').style.display = status.enabled ? 'block' : 'none';
-        const stored = await webuiKey.get();
-        if (stored && await verifyKey(VERIFY, stored)) { location.href='/webui/chat'; return; }
-        if (stored) webuiKey.clear();
+        document.getElementById('loginHint').style.display = status.enabled ? 'none' : 'block';
+        webuiKey.clear();
         if (await verifyKey(VERIFY, '')) location.href='/webui/chat';
       } catch {}
       await renderSiteFooter?.();

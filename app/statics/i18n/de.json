@@ -11,9 +11,11 @@
     "continue": "Weiter",
     "webuiPageTitle": "Grok2API - WebUI",
     "webuiTitle": "WebUI",
-    "webuiSubtitle": "Geben Sie den Zugriffsschlüssel ein",
+    "webuiSubtitle": "Melden Sie sich mit Ihrem Linux.do-Konto an",
     "webuiPlaceholder": "Zugriffsschlüssel",
     "enter": "Öffnen",
+    "linuxdoLogin": "Mit Linux.do anmelden",
+    "linuxdoDisabled": "Linux.do-Anmeldung ist nicht konfiguriert",
     "goToAdmin": "Zum Administrationsbereich"
   },
   "webui": {

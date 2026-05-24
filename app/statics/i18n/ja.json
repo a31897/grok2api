@@ -11,9 +11,11 @@
     "continue": "続行",
     "webuiPageTitle": "Grok2API - WebUI",
     "webuiTitle": "WebUI",
-    "webuiSubtitle": "アクセスキーを入力してください",
+    "webuiSubtitle": "Linux.do アカウントでログインしてください",
     "webuiPlaceholder": "アクセスキー",
     "enter": "入る",
+    "linuxdoLogin": "Linux.do でログイン",
+    "linuxdoDisabled": "Linux.do ログインが設定されていません",
     "goToAdmin": "管理パネルへ"
   },
   "webui": {
