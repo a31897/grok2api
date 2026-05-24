@@ -63,6 +63,7 @@ class UserStore:
     def _connect(self) -> sqlite3.Connection:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         conn = sqlite3.connect(self.path)
+        conn.execute("PRAGMA foreign_keys = ON")
         conn.row_factory = sqlite3.Row
         return conn
 
@@ -305,6 +306,18 @@ class UserStore:
             if row is None:
                 raise KeyError(user_id)
             return _row_to_dict(row)
+
+    async def delete_user(self, user_id: str) -> bool:
+        await self.initialize()
+        async with self._lock:
+            return await asyncio.to_thread(self._delete_user_sync, user_id)
+
+    def _delete_user_sync(self, user_id: str) -> bool:
+        with self._connect() as conn:
+            conn.execute("DELETE FROM user_sessions WHERE user_id = ?", (user_id,))
+            conn.execute("DELETE FROM user_api_keys WHERE user_id = ?", (user_id,))
+            cur = conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+            return cur.rowcount > 0
 
     async def reset_quota(self, user_id: str) -> dict[str, Any]:
         await self.initialize()

@@ -60,4 +60,12 @@ async def delete_user_api_key(key_id: str):
     return {"deleted": await get_user_store().delete_api_key(key_id)}
 
 
+@router.delete("/users/{user_id:path}")
+async def delete_user(user_id: str):
+    deleted = await get_user_store().delete_user(user_id)
+    if not deleted:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    return {"deleted": True}
+
+
 __all__ = ["router"]

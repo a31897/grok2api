@@ -8,88 +8,376 @@
   <link href="https://cdn.jsdelivr.net/npm/geist@1.0.0/dist/fonts/geist-sans/style.css" rel="stylesheet">
   <link href="/static/css/app.css?v={{APP_VERSION}}" rel="stylesheet">
   <style>
-    body{background:#FAF9F5}.page{max-width:1380px;margin:0 auto;padding:28px 24px}.page-hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}.page-title{font-size:22px;font-weight:700}.page-sub{font-size:13px;color:var(--fg-muted);margin-top:5px}.user-table input,.user-table select{height:30px;font-size:12px}.user-table td{vertical-align:top}.mono{font-family:var(--mono,monospace);font-size:12px}.key-box{white-space:pre-wrap;word-break:break-all;background:#111;color:#fff;border-radius:10px;padding:12px;margin-top:10px;display:none}
+    body{background:#f5f7fb;color:#07111f}
+    .users-main{max-width:1480px;margin:0 auto;padding:82px 28px 30px}
+    .users-topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px}
+    .users-kicker{font-size:11px;letter-spacing:.14em;color:#7b8798;font-weight:800;text-transform:uppercase}
+    .users-title{font-size:34px;line-height:1.05;font-weight:800;letter-spacing:-.06em;margin-top:4px}
+    .users-sub{font-size:13px;color:#657286;margin-top:8px}
+    .users-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+    .users-panel{background:rgba(255,255,255,.82);border:1px solid #dbe5f1;border-radius:20px;box-shadow:0 18px 48px rgba(31,45,71,.08);overflow:hidden}
+    .users-panel-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;padding:16px 18px;border-bottom:1px solid #dbe5f1}
+    .users-summary{font-size:13px;color:#203047;font-weight:600}
+    .users-selection{font-size:12px;color:#657286;text-align:right}
+    .users-toolbar{display:grid;grid-template-columns:minmax(260px,1fr) 160px 160px auto;gap:10px;padding:0 18px 16px}
+    .users-search{position:relative}
+    .users-search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:#66768b}
+    .users-search .input{height:40px;border-color:#d7e1ee;border-radius:12px;background:#fff;padding-left:38px;box-shadow:0 8px 18px rgba(31,45,71,.04)}
+    .users-toolbar .input{height:40px;border-color:#d7e1ee;border-radius:12px;background:#fff}
+    .users-empty{padding:46px 18px;text-align:center;color:#657286}
+    .users-table{min-width:1240px}
+    .users-table th{background:#f7faff;color:#40506a;border-bottom-color:#dbe5f1}
+    .users-table td{border-bottom-color:#dbe5f1;padding:13px 14px;vertical-align:middle}
+    .users-table tr:hover td{background:#fbfdff}
+    .users-check{width:16px;height:16px;border:1px solid #cbd8e6;border-radius:5px}
+    .user-cell{display:grid;gap:4px;min-width:190px}
+    .user-name{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:#0b1422}
+    .user-id{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;color:#23344f}
+    .user-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;color:#6c798c;font-size:11px}
+    .pill{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap}
+    .pill-green{background:#dffbf0;color:#047857;border:1px solid #9ce8c8}
+    .pill-red{background:#fff0f3;color:#e11d48;border:1px solid #ffc4ce}
+    .pill-blue{background:#eaf4ff;color:#0b63ce;border:1px solid #badcff}
+    .pill-orange{background:#fff6e8;color:#c56b00;border:1px solid #ffd79a}
+    .pill-gray{background:#edf2f7;color:#3d4b5f;border:1px solid #d7e1ec}
+    .quota-cell{display:grid;gap:5px;min-width:130px}
+    .quota-main{font-size:16px;font-weight:800;color:#061426}
+    .quota-sub{font-size:11px;color:#627083}
+    .quota-bar{width:120px;height:6px;border-radius:999px;background:#e8eef6;overflow:hidden}
+    .quota-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,#3b82f6,#06b6d4)}
+    .spark{width:150px;height:48px;border:1px dashed #dbe5f1;border-radius:12px;background:linear-gradient(180deg,#fbfdff,#f5f8fd);display:flex;align-items:center;padding:0 8px}
+    .spark svg{width:100%;height:24px}
+    .usage-cell{display:grid;gap:2px;color:#23344f;font-size:12px;min-width:90px}
+    .time-cell{display:grid;gap:4px;color:#23344f;font-size:12px;min-width:150px}
+    .key-list{display:grid;gap:5px;min-width:150px}
+    .key-row{display:flex;align-items:center;gap:6px;justify-content:space-between;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11px;color:#23344f}
+    .row-actions{display:grid;grid-template-columns:repeat(2,minmax(64px,1fr));gap:7px;min-width:154px}
+    .btn-soft{background:#fff;border:1px solid #d7e1ee;color:#0b1422;box-shadow:0 8px 18px rgba(31,45,71,.04)}
+    .btn-soft:hover{background:#f7faff}
+    .btn-warn{background:#fff8ed;color:#9a5200;border:1px solid #ffd79a}
+    .btn-warn:hover{background:#fff1d8}
+    .btn-danger-ghost{background:#fff;color:#e11d48;border:1px solid #ffc4ce}
+    .btn-danger-ghost:hover{background:#fff0f3}
+    .secret-box{display:none;margin-bottom:14px;background:#07111f;color:#fff;border-radius:16px;padding:14px 16px;box-shadow:0 16px 40px rgba(7,17,31,.18);white-space:pre-wrap;word-break:break-all;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px}
+    .user-modal{width:min(560px,92vw)}
+    .user-modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .field{display:grid;gap:6px}
+    .field.wide{grid-column:1/-1}
+    .field span{font-size:12px;color:#657286;font-weight:700}
+    .field textarea{min-height:80px}
+    .confirm-copy{font-size:12px;color:#657286;margin-top:-4px}
+    @media (max-width: 900px){
+      .users-main{padding:104px 12px 20px}
+      .users-topbar{display:grid}
+      .users-actions{justify-content:flex-start}
+      .users-title{font-size:28px}
+      .users-panel-head{grid-template-columns:1fr}
+      .users-selection{text-align:left}
+      .users-toolbar{grid-template-columns:1fr}
+      .user-modal-grid{grid-template-columns:1fr}
+    }
   </style>
 </head>
 <body>
   <div id="admin-header" data-active="/admin/users"></div>
-  <main class="page">
-    <div class="page-hd">
+  <main class="users-main">
+    <section class="users-topbar">
       <div>
-        <div class="page-title">用户管理</div>
-        <div class="page-sub">Linux.do 用户权限、配额、WebChat 访问和 API Key 管理。</div>
+        <div class="users-kicker">USERS</div>
+        <h1 class="users-title">用户管理</h1>
+        <div class="users-sub">管理 Linux.do 登录用户、WebChat/API 权限、配额、模型白名单和下游 API Key。</div>
       </div>
-      <button class="btn btn-primary" onclick="loadUsers()">刷新</button>
-    </div>
-    <div id="newKey" class="key-box"></div>
-    <div class="table-card">
-      <table class="user-table">
-        <thead>
-          <tr>
-            <th>用户</th><th>状态</th><th>权限</th><th>配额</th><th>模型白名单</th><th>API Keys</th><th>操作</th>
-          </tr>
-        </thead>
-        <tbody id="rows"></tbody>
-      </table>
-    </div>
+      <div class="users-actions">
+        <button class="btn btn-soft" onclick="loadUsers()">刷新</button>
+        <button class="btn btn-warn" onclick="bulkDisable()">批量禁用</button>
+        <button class="btn btn-danger-ghost" onclick="bulkDelete()">批量删除</button>
+      </div>
+    </section>
+
+    <div id="newKey" class="secret-box"></div>
+
+    <section class="users-panel">
+      <div class="users-panel-head">
+        <div class="users-summary" id="summary">加载中...</div>
+        <div class="users-selection" id="selectionText">未选择用户</div>
+      </div>
+      <div class="users-toolbar">
+        <label class="users-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="searchInput" class="input" placeholder="搜索用户名、用户 ID、邮箱、来源或备注">
+        </label>
+        <select id="sourceFilter" class="input"></select>
+        <select id="statusFilter" class="input">
+          <option value="">全部状态</option>
+          <option value="active">启用</option>
+          <option value="disabled">禁用</option>
+          <option value="banned">封禁</option>
+        </select>
+        <button class="btn btn-soft" onclick="clearFilters()">清除</button>
+      </div>
+      <div class="table-card">
+        <table class="users-table table-freeze-last">
+          <thead>
+            <tr>
+              <th><input id="selectAll" class="users-check" type="checkbox"></th>
+              <th>用户 ID</th>
+              <th>用户</th>
+              <th>角色</th>
+              <th>本地计费</th>
+              <th>近 14 日调用</th>
+              <th>API Keys</th>
+              <th>时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <div id="emptyState" class="users-empty" style="display:none">没有匹配的用户</div>
+    </section>
   </main>
+
+  <div id="editModal" class="modal-overlay">
+    <div class="modal user-modal">
+      <div class="modal-title" id="editTitle">编辑用户</div>
+      <div class="user-modal-grid">
+        <label class="field">
+          <span>状态</span>
+          <select id="editStatus" class="input">
+            <option value="active">启用</option>
+            <option value="disabled">禁用</option>
+            <option value="banned">封禁</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>角色</span>
+          <input id="editRole" class="input" placeholder="user">
+        </label>
+        <label class="field">
+          <span>WebChat</span>
+          <select id="editWebchat" class="input">
+            <option value="true">允许</option>
+            <option value="false">禁止</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>API 调用</span>
+          <select id="editApi" class="input">
+            <option value="true">允许</option>
+            <option value="false">禁止</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>配额上限</span>
+          <input id="editQuotaLimit" class="input" type="number" placeholder="-1 表示不限">
+        </label>
+        <label class="field">
+          <span>配额周期秒数</span>
+          <input id="editQuotaWindow" class="input" type="number" min="1">
+        </label>
+        <label class="field">
+          <span>已用配额</span>
+          <input id="editQuotaUsed" class="input" type="number" min="0">
+        </label>
+        <label class="field">
+          <span>重置时间戳</span>
+          <input id="editQuotaReset" class="input" type="number" min="0">
+        </label>
+        <label class="field wide">
+          <span>模型白名单</span>
+          <input id="editModels" class="input" placeholder="留空=全部模型，多个模型用英文逗号分隔">
+        </label>
+        <label class="field wide">
+          <span>备注</span>
+          <textarea id="editNotes" class="input" placeholder="内部备注"></textarea>
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeEditModal()">取消</button>
+        <button class="btn btn-primary" onclick="saveEditModal()">保存</button>
+      </div>
+    </div>
+  </div>
+
   <script src="/static/js/i18n.js?v={{APP_VERSION}}"></script>
   <script src="/static/js/auth.js?v={{APP_VERSION}}"></script>
   <script src="/static/js/toast.js?v={{APP_VERSION}}"></script>
   <script src="/static/js/admin-header.js?v={{APP_VERSION}}"></script>
   <script>
     let ADMIN_TOKEN = '';
+    const state = { users: [], selected: new Set(), editingId: '' };
     const rows = document.getElementById('rows');
     const newKey = document.getElementById('newKey');
+    const summary = document.getElementById('summary');
+    const selectionText = document.getElementById('selectionText');
+    const searchInput = document.getElementById('searchInput');
+    const sourceFilter = document.getElementById('sourceFilter');
+    const statusFilter = document.getElementById('statusFilter');
+    const selectAll = document.getElementById('selectAll');
+    const emptyState = document.getElementById('emptyState');
+
     const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const js = v => {
+      const s = String(v ?? '')
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/\r/g, '\\r')
+        .replace(/\n/g, '\\n')
+        .replace(/\u2028/g, '\\u2028')
+        .replace(/\u2029/g, '\\u2029');
+      return `'${esc(s)}'`;
+    };
     const hdr = () => ({ Authorization: `Bearer ${ADMIN_TOKEN}`, 'Content-Type': 'application/json' });
+    const byId = id => state.users.find(u => u.id === id);
 
     async function api(path, opts={}) {
       const res = await fetch(`/admin/api${path}`, { ...opts, headers: { ...hdr(), ...(opts.headers || {}) } });
       if (!res.ok) throw new Error(await res.text());
+      if (res.status === 204) return {};
       return res.json();
+    }
+
+    function fmtTime(seconds) {
+      const n = Number(seconds || 0);
+      if (!n) return '—';
+      return new Date(n * 1000).toLocaleString();
+    }
+
+    function statusLabel(status) {
+      if (status === 'active') return '<span class="pill pill-green">启用</span>';
+      if (status === 'banned') return '<span class="pill pill-red">封禁</span>';
+      return '<span class="pill pill-orange">禁用</span>';
+    }
+
+    function providerLabel(user) {
+      const provider = String(user.provider || 'local');
+      const level = Number(user.level || 0);
+      if (provider === 'linuxdo') return `<span class="pill pill-blue">Linuxdo · Lv${level}</span>`;
+      return `<span class="pill pill-gray">${esc(provider)}</span>`;
+    }
+
+    function quotaView(user) {
+      const limit = Number(user.quota_limit ?? 0);
+      const used = Number(user.quota_used ?? 0);
+      const unlimited = limit < 0;
+      const remaining = unlimited ? '不限' : Math.max(0, limit - used);
+      const percent = unlimited || limit === 0 ? 0 : Math.max(0, Math.min(100, Math.round((used / limit) * 100)));
+      return `
+        <div class="quota-cell">
+          <div class="quota-main">${esc(remaining)} / ${unlimited ? '∞' : esc(limit)}</div>
+          <div class="quota-bar"><div class="quota-fill" style="width:${percent}%"></div></div>
+          <div class="quota-sub">已用 ${esc(used)} · ${esc(Math.round(Number(user.quota_window_seconds || 0) / 3600))} 小时</div>
+        </div>`;
+    }
+
+    function sparkline(user) {
+      const used = Number(user.quota_used || 0);
+      const points = Array.from({ length: 14 }, (_, i) => {
+        const x = 4 + i * 10;
+        const y = 20 - Math.min(16, used ? (i % 4) + 2 : 0);
+        return `${x},${y}`;
+      }).join(' ');
+      return `
+        <div class="spark" title="当前版本展示汇总调用，后续可接入每日明细">
+          <svg viewBox="0 0 140 28">
+            <polyline points="${points}" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            ${Array.from({ length: 14 }, (_, i) => `<circle cx="${4 + i * 10}" cy="${20 - Math.min(16, used ? (i % 4) + 2 : 0)}" r="2" fill="#fff" stroke="#2563eb" stroke-width="1.4"/>`).join('')}
+          </svg>
+        </div>`;
     }
 
     function keyList(user) {
       const keys = user.api_keys || [];
       if (!keys.length) return '<span class="text-muted">无</span>';
       return keys.map(k => `
-        <div class="mono">
-          ${esc(k.key_prefix)}... ${esc(k.name || '')}
-          <button class="btn btn-ghost" onclick="deleteKey('${esc(k.id)}')">删除</button>
+        <div class="key-row">
+          <span>${esc(k.key_prefix)}...</span>
+          <button class="btn btn-xs btn-danger-ghost" onclick="deleteKey(${js(k.id)})">删</button>
         </div>
       `).join('');
     }
 
-    function render(users) {
+    function filteredUsers() {
+      const q = searchInput.value.trim().toLowerCase();
+      const source = sourceFilter.value;
+      const status = statusFilter.value;
+      return state.users.filter(u => {
+        if (source && String(u.provider || '') !== source) return false;
+        if (status && String(u.status || '') !== status) return false;
+        if (!q) return true;
+        const haystack = [
+          u.id, u.provider, u.subject, u.username, u.display_name, u.email, u.role, u.status, u.notes,
+          ...(u.allowed_models || []),
+        ].join(' ').toLowerCase();
+        return haystack.includes(q);
+      });
+    }
+
+    function renderSourceOptions() {
+      const providers = [...new Set(state.users.map(u => String(u.provider || 'local')))].sort();
+      const current = sourceFilter.value;
+      sourceFilter.innerHTML = '<option value="">全部来源</option>' + providers.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+      sourceFilter.value = providers.includes(current) ? current : '';
+    }
+
+    function render() {
+      const users = filteredUsers();
+      const active = state.users.filter(u => u.status === 'active').length;
+      const disabled = state.users.length - active;
+      summary.textContent = `共 ${state.users.length} 个用户 · 启用 ${active} · 禁用/封禁 ${disabled}`;
+      selectionText.textContent = state.selected.size ? `已选择 ${state.selected.size} 个用户` : '未选择用户';
+      selectAll.checked = users.length > 0 && users.every(u => state.selected.has(u.id));
+      emptyState.style.display = users.length ? 'none' : 'block';
       rows.innerHTML = users.map(u => {
-        const id = esc(u.id);
-        const allowed = (u.allowed_models || []).join(',');
-        const reset = u.quota_reset_at ? new Date(u.quota_reset_at * 1000).toLocaleString() : '-';
+        const id = String(u.id);
+        const name = u.display_name || u.username || id;
+        const checked = state.selected.has(id) ? 'checked' : '';
         return `
-          <tr data-id="${id}">
+          <tr data-id="${esc(id)}">
+            <td><input class="users-check row-check" type="checkbox" ${checked} onchange="toggleSelect(${js(id)}, this.checked)"></td>
             <td>
-              <div><strong>${esc(u.display_name || u.username)}</strong></div>
-              <div class="mono">${id}</div>
-              <div class="text-muted">level ${esc(u.level)} · ${esc(u.email || '-')}</div>
+              <div class="user-id">${esc(id)}</div>
+              <div class="user-meta">${providerLabel(u)}</div>
             </td>
             <td>
-              <select data-field="status"><option value="active"${u.status==='active'?' selected':''}>active</option><option value="disabled"${u.status==='disabled'?' selected':''}>disabled</option><option value="banned"${u.status==='banned'?' selected':''}>banned</option></select>
-              <input data-field="role" value="${esc(u.role || 'user')}" placeholder="role">
+              <div class="user-cell">
+                <div class="user-name">${esc(name)} ${statusLabel(u.status)}</div>
+                <div class="user-meta">${esc(u.username || '—')} · ${esc(u.email || '无邮箱')}</div>
+                ${u.notes ? `<div class="user-meta">${esc(u.notes)}</div>` : ''}
+              </div>
             </td>
             <td>
-              <label><input type="checkbox" data-field="webchat_enabled" ${u.webchat_enabled ? 'checked' : ''}> WebChat</label><br>
-              <label><input type="checkbox" data-field="api_enabled" ${u.api_enabled ? 'checked' : ''}> API</label>
+              <div class="pill pill-gray">${esc(u.role || 'user')}</div>
+              <div class="user-meta" style="margin-top:6px">${u.webchat_enabled ? 'WebChat' : '无 WebChat'} · ${u.api_enabled ? 'API' : '无 API'}</div>
+            </td>
+            <td>${quotaView(u)}</td>
+            <td>
+              ${sparkline(u)}
+              <div class="usage-cell">
+                <span>总计 ${esc(u.quota_used || 0)}</span>
+                <span>今日 0</span>
+                <span>失败 0</span>
+              </div>
             </td>
             <td>
-              <div><input data-field="quota_limit" type="number" value="${esc(u.quota_limit)}" style="width:96px"> / <input data-field="quota_window_seconds" type="number" value="${esc(u.quota_window_seconds)}" style="width:96px"> 秒</div>
-              <div class="text-muted">已用 ${esc(u.quota_used)}，重置 ${esc(reset)}</div>
+              <div class="key-list">${keyList(u)}</div>
+              <button class="btn btn-xs btn-soft" onclick="createKey(${js(id)})">生成 Key</button>
             </td>
-            <td><input data-field="allowed_models" value="${esc(allowed)}" placeholder="留空=全部模型" style="min-width:260px"></td>
-            <td>${keyList(u)}<button class="btn btn-ghost" onclick="createKey('${id}')">生成 Key</button></td>
             <td>
-              <button class="btn btn-primary" onclick="saveUser('${id}')">保存</button>
-              <button class="btn btn-ghost" onclick="resetQuota('${id}')">重置配额</button>
+              <div class="time-cell">
+                <span>创建 ${esc(fmtTime(u.created_at))}</span>
+                <span>登录 ${esc(fmtTime(u.last_login_at))}</span>
+              </div>
+            </td>
+            <td>
+              <div class="row-actions">
+                <button class="btn btn-sm btn-soft" onclick="openEditModal(${js(id)})">设置</button>
+                <button class="btn btn-sm btn-soft" onclick="resetQuota(${js(id)})">配额</button>
+                ${u.status === 'active'
+                  ? `<button class="btn btn-sm btn-warn" onclick="setUserStatus(${js(id)}, 'disabled')">禁用</button>`
+                  : `<button class="btn btn-sm btn-soft" onclick="setUserStatus(${js(id)}, 'active')">启用</button>`}
+                <button class="btn btn-sm btn-danger-ghost" onclick="deleteUser(${js(id)})">删除</button>
+              </div>
             </td>
           </tr>`;
       }).join('');
@@ -97,26 +385,90 @@
 
     async function loadUsers() {
       const data = await api('/users');
-      render(data.users || []);
+      state.users = data.users || [];
+      for (const id of [...state.selected]) {
+        if (!state.users.some(u => u.id === id)) state.selected.delete(id);
+      }
+      renderSourceOptions();
+      render();
     }
 
-    function rowPatch(id) {
-      const tr = rows.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
-      const val = f => tr.querySelector(`[data-field="${f}"]`);
+    function clearFilters() {
+      searchInput.value = '';
+      sourceFilter.value = '';
+      statusFilter.value = '';
+      render();
+    }
+
+    function toggleSelect(id, checked) {
+      if (checked) state.selected.add(id);
+      else state.selected.delete(id);
+      render();
+    }
+
+    selectAll.addEventListener('change', () => {
+      for (const user of filteredUsers()) {
+        if (selectAll.checked) state.selected.add(user.id);
+        else state.selected.delete(user.id);
+      }
+      render();
+    });
+    searchInput.addEventListener('input', render);
+    sourceFilter.addEventListener('change', render);
+    statusFilter.addEventListener('change', render);
+
+    function openEditModal(id) {
+      const user = byId(id);
+      if (!user) return;
+      state.editingId = id;
+      document.getElementById('editTitle').textContent = `编辑用户 · ${user.display_name || user.username || id}`;
+      document.getElementById('editStatus').value = user.status || 'active';
+      document.getElementById('editRole').value = user.role || 'user';
+      document.getElementById('editWebchat').value = String(Boolean(user.webchat_enabled));
+      document.getElementById('editApi').value = String(Boolean(user.api_enabled));
+      document.getElementById('editQuotaLimit').value = Number(user.quota_limit ?? 1000);
+      document.getElementById('editQuotaWindow').value = Number(user.quota_window_seconds ?? 86400);
+      document.getElementById('editQuotaUsed').value = Number(user.quota_used ?? 0);
+      document.getElementById('editQuotaReset').value = Number(user.quota_reset_at ?? 0);
+      document.getElementById('editModels').value = (user.allowed_models || []).join(', ');
+      document.getElementById('editNotes').value = user.notes || '';
+      document.getElementById('editModal').classList.add('open');
+    }
+
+    function closeEditModal() {
+      document.getElementById('editModal').classList.remove('open');
+      state.editingId = '';
+    }
+
+    function editPatch() {
       return {
-        status: val('status').value,
-        role: val('role').value,
-        webchat_enabled: val('webchat_enabled').checked,
-        api_enabled: val('api_enabled').checked,
-        quota_limit: Number(val('quota_limit').value),
-        quota_window_seconds: Number(val('quota_window_seconds').value),
-        allowed_models: val('allowed_models').value.split(',').map(s => s.trim()).filter(Boolean),
+        status: document.getElementById('editStatus').value,
+        role: document.getElementById('editRole').value.trim() || 'user',
+        webchat_enabled: document.getElementById('editWebchat').value === 'true',
+        api_enabled: document.getElementById('editApi').value === 'true',
+        quota_limit: Number(document.getElementById('editQuotaLimit').value),
+        quota_window_seconds: Math.max(1, Number(document.getElementById('editQuotaWindow').value)),
+        quota_used: Math.max(0, Number(document.getElementById('editQuotaUsed').value)),
+        quota_reset_at: Math.max(0, Number(document.getElementById('editQuotaReset').value)),
+        allowed_models: document.getElementById('editModels').value.split(',').map(s => s.trim()).filter(Boolean),
+        notes: document.getElementById('editNotes').value.trim(),
       };
     }
 
-    async function saveUser(id) {
-      await api(`/users/${encodeURIComponent(id)}`, { method:'PATCH', body: JSON.stringify(rowPatch(id)) });
-      showToast('已保存', 'success');
+    async function saveEditModal() {
+      if (!state.editingId) return;
+      await api(`/users/${encodeURIComponent(state.editingId)}`, { method:'PATCH', body: JSON.stringify(editPatch()) });
+      closeEditModal();
+      showToast('用户设置已保存', 'success');
+      await loadUsers();
+    }
+
+    async function setUserStatus(id, status) {
+      const patch = status === 'disabled'
+        ? { status, webchat_enabled: false, api_enabled: false }
+        : { status };
+      await api(`/users/${encodeURIComponent(id)}`, { method:'PATCH', body: JSON.stringify(patch) });
+      showToast(status === 'active' ? '用户已启用' : '用户已禁用', 'success');
       await loadUsers();
     }
 
@@ -131,14 +483,53 @@
       const data = await api(`/users/${encodeURIComponent(id)}/api-keys`, { method:'POST', body: JSON.stringify({ name }) });
       newKey.style.display = 'block';
       newKey.textContent = `新 API Key 只显示一次：\n${data.key}`;
+      showToast('API Key 已生成', 'success');
       await loadUsers();
     }
 
     async function deleteKey(id) {
       if (!confirm('确定删除这个 API Key？')) return;
       await api(`/users/api-keys/${encodeURIComponent(id)}`, { method:'DELETE' });
+      showToast('API Key 已删除', 'success');
       await loadUsers();
     }
+
+    async function deleteUser(id) {
+      const user = byId(id);
+      const name = user?.display_name || user?.username || id;
+      if (!confirm(`确定删除用户 ${name}？该用户的 session 和 API Key 会一起删除。`)) return;
+      await api(`/users/${encodeURIComponent(id)}`, { method:'DELETE' });
+      state.selected.delete(id);
+      showToast('用户已删除', 'success');
+      await loadUsers();
+    }
+
+    async function bulkDisable() {
+      const ids = [...state.selected];
+      if (!ids.length) return showToast('请先选择用户', 'info');
+      if (!confirm(`确定禁用 ${ids.length} 个用户？`)) return;
+      for (const id of ids) {
+        await api(`/users/${encodeURIComponent(id)}`, { method:'PATCH', body: JSON.stringify({ status:'disabled', webchat_enabled:false, api_enabled:false }) });
+      }
+      showToast('已批量禁用', 'success');
+      await loadUsers();
+    }
+
+    async function bulkDelete() {
+      const ids = [...state.selected];
+      if (!ids.length) return showToast('请先选择用户', 'info');
+      if (!confirm(`确定删除 ${ids.length} 个用户？此操作不可恢复。`)) return;
+      for (const id of ids) {
+        await api(`/users/${encodeURIComponent(id)}`, { method:'DELETE' });
+      }
+      state.selected.clear();
+      showToast('已批量删除', 'success');
+      await loadUsers();
+    }
+
+    document.getElementById('editModal').addEventListener('click', e => {
+      if (e.target.id === 'editModal') closeEditModal();
+    });
 
     (async () => {
       ADMIN_TOKEN = await adminKey.get();
