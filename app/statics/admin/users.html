@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grok2API - 用户管理</title>
+  <link rel="icon" href="/favicon.ico?v={{APP_VERSION}}">
+  <link href="https://cdn.jsdelivr.net/npm/geist@1.0.0/dist/fonts/geist-sans/style.css" rel="stylesheet">
+  <link href="/static/css/app.css?v={{APP_VERSION}}" rel="stylesheet">
+  <style>
+    body{background:#FAF9F5}.page{max-width:1380px;margin:0 auto;padding:28px 24px}.page-hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}.page-title{font-size:22px;font-weight:700}.page-sub{font-size:13px;color:var(--fg-muted);margin-top:5px}.user-table input,.user-table select{height:30px;font-size:12px}.user-table td{vertical-align:top}.mono{font-family:var(--mono,monospace);font-size:12px}.key-box{white-space:pre-wrap;word-break:break-all;background:#111;color:#fff;border-radius:10px;padding:12px;margin-top:10px;display:none}
+  </style>
+</head>
+<body>
+  <div id="admin-header" data-active="/admin/users"></div>
+  <main class="page">
+    <div class="page-hd">
+      <div>
+        <div class="page-title">用户管理</div>
+        <div class="page-sub">Linux.do 用户权限、配额、WebChat 访问和 API Key 管理。</div>
+      </div>
+      <button class="btn btn-primary" onclick="loadUsers()">刷新</button>
+    </div>
+    <div id="newKey" class="key-box"></div>
+    <div class="table-card">
+      <table class="user-table">
+        <thead>
+          <tr>
+            <th>用户</th><th>状态</th><th>权限</th><th>配额</th><th>模型白名单</th><th>API Keys</th><th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </main>
+  <script src="/static/js/i18n.js?v={{APP_VERSION}}"></script>
+  <script src="/static/js/auth.js?v={{APP_VERSION}}"></script>
+  <script src="/static/js/toast.js?v={{APP_VERSION}}"></script>
+  <script src="/static/js/admin-header.js?v={{APP_VERSION}}"></script>
+  <script>
+    let ADMIN_TOKEN = '';
+    const rows = document.getElementById('rows');
+    const newKey = document.getElementById('newKey');
+    const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const hdr = () => ({ Authorization: `Bearer ${ADMIN_TOKEN}`, 'Content-Type': 'application/json' });
+
+    async function api(path, opts={}) {
+      const res = await fetch(`/admin/api${path}`, { ...opts, headers: { ...hdr(), ...(opts.headers || {}) } });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    }
+
+    function keyList(user) {
+      const keys = user.api_keys || [];
+      if (!keys.length) return '<span class="text-muted">无</span>';
+      return keys.map(k => `
+        <div class="mono">
+          ${esc(k.key_prefix)}... ${esc(k.name || '')}
+          <button class="btn btn-ghost" onclick="deleteKey('${esc(k.id)}')">删除</button>
+        </div>
+      `).join('');
+    }
+
+    function render(users) {
+      rows.innerHTML = users.map(u => {
+        const id = esc(u.id);
+        const allowed = (u.allowed_models || []).join(',');
+        const reset = u.quota_reset_at ? new Date(u.quota_reset_at * 1000).toLocaleString() : '-';
+        return `
+          <tr data-id="${id}">
+            <td>
+              <div><strong>${esc(u.display_name || u.username)}</strong></div>
+              <div class="mono">${id}</div>
+              <div class="text-muted">level ${esc(u.level)} · ${esc(u.email || '-')}</div>
+            </td>
+            <td>
+              <select data-field="status"><option value="active"${u.status==='active'?' selected':''}>active</option><option value="disabled"${u.status==='disabled'?' selected':''}>disabled</option><option value="banned"${u.status==='banned'?' selected':''}>banned</option></select>
+              <input data-field="role" value="${esc(u.role || 'user')}" placeholder="role">
+            </td>
+            <td>
+              <label><input type="checkbox" data-field="webchat_enabled" ${u.webchat_enabled ? 'checked' : ''}> WebChat</label><br>
+              <label><input type="checkbox" data-field="api_enabled" ${u.api_enabled ? 'checked' : ''}> API</label>
+            </td>
+            <td>
+              <div><input data-field="quota_limit" type="number" value="${esc(u.quota_limit)}" style="width:96px"> / <input data-field="quota_window_seconds" type="number" value="${esc(u.quota_window_seconds)}" style="width:96px"> 秒</div>
+              <div class="text-muted">已用 ${esc(u.quota_used)}，重置 ${esc(reset)}</div>
+            </td>
+            <td><input data-field="allowed_models" value="${esc(allowed)}" placeholder="留空=全部模型" style="min-width:260px"></td>
+            <td>${keyList(u)}<button class="btn btn-ghost" onclick="createKey('${id}')">生成 Key</button></td>
+            <td>
+              <button class="btn btn-primary" onclick="saveUser('${id}')">保存</button>
+              <button class="btn btn-ghost" onclick="resetQuota('${id}')">重置配额</button>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    async function loadUsers() {
+      const data = await api('/users');
+      render(data.users || []);
+    }
+
+    function rowPatch(id) {
+      const tr = rows.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
+      const val = f => tr.querySelector(`[data-field="${f}"]`);
+      return {
+        status: val('status').value,
+        role: val('role').value,
+        webchat_enabled: val('webchat_enabled').checked,
+        api_enabled: val('api_enabled').checked,
+        quota_limit: Number(val('quota_limit').value),
+        quota_window_seconds: Number(val('quota_window_seconds').value),
+        allowed_models: val('allowed_models').value.split(',').map(s => s.trim()).filter(Boolean),
+      };
+    }
+
+    async function saveUser(id) {
+      await api(`/users/${encodeURIComponent(id)}`, { method:'PATCH', body: JSON.stringify(rowPatch(id)) });
+      showToast('已保存', 'success');
+      await loadUsers();
+    }
+
+    async function resetQuota(id) {
+      await api(`/users/${encodeURIComponent(id)}/quota/reset`, { method:'POST', body:'{}' });
+      showToast('配额已重置', 'success');
+      await loadUsers();
+    }
+
+    async function createKey(id) {
+      const name = prompt('Key 名称', 'default') || 'default';
+      const data = await api(`/users/${encodeURIComponent(id)}/api-keys`, { method:'POST', body: JSON.stringify({ name }) });
+      newKey.style.display = 'block';
+      newKey.textContent = `新 API Key 只显示一次：\n${data.key}`;
+      await loadUsers();
+    }
+
+    async function deleteKey(id) {
+      if (!confirm('确定删除这个 API Key？')) return;
+      await api(`/users/api-keys/${encodeURIComponent(id)}`, { method:'DELETE' });
+      await loadUsers();
+    }
+
+    (async () => {
+      ADMIN_TOKEN = await adminKey.get();
+      if (!ADMIN_TOKEN || !(await verifyKey(ADMIN_API + '/verify', ADMIN_TOKEN))) location.href='/admin/login';
+      await renderAdminHeader();
+      await loadUsers();
+    })().catch(err => showToast(err.message || '加载失败', 'error'));
+  </script>
+</body>
+</html>

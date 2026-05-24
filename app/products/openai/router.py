@@ -10,7 +10,11 @@ from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
 
 from app.control.account.state_machine import is_manageable
-from app.platform.auth.middleware import verify_api_key
+from app.platform.auth.middleware import (
+    allowed_models_for_request,
+    enforce_model_access,
+    verify_api_key,
+)
 from app.platform.errors import AppError, ValidationError
 from app.platform.logging.logger import logger
 from app.platform.storage import image_files_dir, video_files_dir
@@ -56,6 +60,11 @@ def _model_available_for_pools(spec: ModelSpec, pools: frozenset[str]) -> bool:
     return False
 
 
+def _model_allowed_for_request(request: Request, spec: ModelSpec) -> bool:
+    allowed = allowed_models_for_request(request)
+    return allowed is None or spec.model_name in allowed
+
+
 # ---------------------------------------------------------------------------
 # /v1/models
 # ---------------------------------------------------------------------------
@@ -75,7 +84,7 @@ async def list_models(request: Request):
             "name": m.public_name,
         }
         for m in model_registry.list_enabled()
-        if _model_available_for_pools(m, pools)
+        if _model_available_for_pools(m, pools) and _model_allowed_for_request(request, m)
     ]
     return JSONResponse({"object": "list", "data": models})
 
@@ -88,7 +97,7 @@ async def get_model_endpoint(model_id: str, request: Request):
 
     spec = model_registry.get(model_id)
     pools = await _available_pools(request)
-    if spec is None or not _model_available_for_pools(spec, pools):
+    if spec is None or not _model_available_for_pools(spec, pools) or not _model_allowed_for_request(request, spec):
         return JSONResponse(
             {
                 "error": {
@@ -213,8 +222,9 @@ async def _upload_to_data_uri(upload: UploadFile, *, param: str) -> str:
 @router.post(
     "/chat/completions", tags=[_TAG_CHAT], dependencies=[Depends(verify_api_key)]
 )
-async def chat_completions_endpoint(req: ChatCompletionRequest):
+async def chat_completions_endpoint(req: ChatCompletionRequest, request: Request):
     _validate_chat(req)
+    enforce_model_access(request, req.model)
     from app.platform.config.snapshot import get_config
 
     cfg = get_config()
@@ -374,7 +384,7 @@ async def _safe_sse_responses(stream) -> AsyncGenerator[str, None]:
 @router.post(
     "/responses", tags=[_TAG_RESPONSES], dependencies=[Depends(verify_api_key)]
 )
-async def responses_endpoint(req: ResponsesCreateRequest):
+async def responses_endpoint(req: ResponsesCreateRequest, request: Request):
     from app.platform.config.snapshot import get_config
     from app.platform.errors import ValidationError as _ValidationError
 
@@ -385,6 +395,7 @@ async def responses_endpoint(req: ResponsesCreateRequest):
             param="model",
             code="model_not_found",
         )
+    enforce_model_access(request, req.model)
     if not req.input:
         raise _ValidationError("input cannot be empty", param="input")
 
@@ -433,12 +444,13 @@ async def responses_endpoint(req: ResponsesCreateRequest):
 @router.post(
     "/images/generations", tags=[_TAG_IMAGES], dependencies=[Depends(verify_api_key)]
 )
-async def image_generations(req: ImageGenerationRequest):
+async def image_generations(req: ImageGenerationRequest, request: Request):
     spec = model_registry.get(req.model)
     if spec is None or not spec.enabled or not spec.is_image():
         raise ValidationError(
             f"Model {req.model!r} is not an image model", param="model"
         )
+    enforce_model_access(request, req.model)
     _validate_image_n(req.model, req.n or 1, param="n")
 
     from .images import generate as img_gen
@@ -462,6 +474,7 @@ async def image_generations(req: ImageGenerationRequest):
 
 @router.post("/videos", tags=[_TAG_VIDEOS], dependencies=[Depends(verify_api_key)])
 async def videos_create(
+    request: Request,
     model: Annotated[str, Form(...)],
     prompt: Annotated[str, Form(...)],
     seconds: Annotated[int, Form()] = 6,
@@ -476,6 +489,7 @@ async def videos_create(
         list[UploadFile] | None, File(alias="input_reference[]")
     ] = None,
 ):
+    enforce_model_access(request, model)
     from .video import create_video
 
     references_payload = None
@@ -527,6 +541,7 @@ async def videos_content(video_id: str):
     "/images/edits", tags=[_TAG_IMAGES], dependencies=[Depends(verify_api_key)]
 )
 async def image_edits(
+    request: Request,
     model: Annotated[str, Form(...)],
     prompt: Annotated[str, Form(...)],
     image: Annotated[list[UploadFile], File(..., alias="image[]")],
@@ -540,6 +555,7 @@ async def image_edits(
         raise ValidationError(
             f"Model {model!r} is not an image-edit model", param="model"
         )
+    enforce_model_access(request, model)
     if mask is not None:
         raise ValidationError("mask is not supported yet", param="mask")
     _validate_image_edit_n(n, param="n")

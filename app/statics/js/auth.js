@@ -49,4 +49,8 @@ async function verifyKey(url, key) {
 }
 
 function adminLogout() { adminKey.clear(); webuiKey.clear(); location.href='/admin/login'; }
-function webuiLogout() { webuiKey.clear(); location.href='/webui/login'; }
+async function webuiLogout() {
+  webuiKey.clear();
+  try { await fetch('/auth/logout', { method: 'POST' }); } catch {}
+  location.href='/webui/login';
+}

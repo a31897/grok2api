@@ -125,6 +125,7 @@ async def lifespan(app: FastAPI):
     )
     from app.control.account.scheduler import get_account_refresh_scheduler
     from app.dataplane.account import get_account_directory
+    from app.platform.users import get_user_store
 
     storage_backend, storage_target = describe_repository_target()
     logger.info(
@@ -152,6 +153,8 @@ async def lifespan(app: FastAPI):
     # Expose repository on app.state for admin handlers.
     app.state.repository = repo
     app.state.directory = directory
+    await get_user_store().initialize()
+    app.state.user_store = get_user_store()
 
     # 3. Account directory sync loop — all workers, lightweight incremental pull.
     #    Keeps each worker's in-memory table eventually consistent with the repo.
@@ -307,6 +310,10 @@ def create_app() -> FastAPI:
         {
             "name": "Admin - Tokens",
             "description": "Admin account token management endpoints.",
+        },
+        {
+            "name": "Admin - Users",
+            "description": "Linux.do user permission, quota, and API key endpoints.",
         },
         {"name": "Admin - Batch", "description": "Admin batch operation endpoints."},
         {

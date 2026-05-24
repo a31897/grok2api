@@ -11,12 +11,14 @@ from app.platform.update_check import get_latest_release_info
 from .static_html import serve_static_html
 from .admin import router as admin_api_router
 from .webui import router as webui_router
+from .users import router as users_router
 
 router = APIRouter()
 
 # Mount admin API sub-router (/admin/api/*)
 router.include_router(admin_api_router)
 router.include_router(webui_router)
+router.include_router(users_router)
 
 _DIR = Path(__file__).resolve().parents[2] / "statics"
 
@@ -58,6 +60,10 @@ async def admin_config():
 async def admin_cache():
     return _serve_html("admin/cache.html")
 
+@router.get("/admin/users", include_in_schema=False)
+async def admin_users():
+    return _serve_html("admin/users.html")
+
 
 # --- WebUI ---
 @router.get("/webui", include_in_schema=False)
@@ -73,6 +79,13 @@ async def webui_login():
 @router.get("/webui/api/verify", dependencies=[Depends(verify_webui_key)], tags=["WebUI - System"])
 async def webui_verify():
     return {"status": "ok"}
+
+
+@router.get("/webui/account", include_in_schema=False)
+async def webui_account():
+    if not is_webui_enabled():
+        raise HTTPException(404, "Not Found")
+    return _serve_html("webui/account.html")
 
 
 @router.get("/meta", include_in_schema=False)

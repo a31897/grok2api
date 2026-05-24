@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grok2API - Account</title>
+  <link rel="icon" href="/favicon.ico?v={{APP_VERSION}}">
+  <link href="https://cdn.jsdelivr.net/npm/geist@1.0.0/dist/fonts/geist-sans/style.css" rel="stylesheet">
+  <link href="/static/css/app.css?v={{APP_VERSION}}" rel="stylesheet">
+  <style>
+    body{background:#FAF9F5}.page{max-width:980px;margin:0 auto;padding:32px 24px}.card{background:#fff;border:1px solid var(--border);border-radius:18px;padding:20px;box-shadow:var(--shadow-sm);margin-bottom:16px}.title{font-size:22px;font-weight:700}.sub{font-size:13px;color:var(--fg-muted);margin-top:6px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:16px}.metric{border:1px solid var(--border);border-radius:14px;padding:14px}.metric b{font-size:20px}.mono{font-family:var(--mono,monospace);word-break:break-all}.key-box{white-space:pre-wrap;word-break:break-all;background:#111;color:#fff;border-radius:10px;padding:12px;display:none;margin-top:12px}
+  </style>
+</head>
+<body class="webui-page">
+  <div id="webui-header" data-active="/webui/account"></div>
+  <main class="page">
+    <section class="card">
+      <div class="title">账户与 API Keys</div>
+      <div class="sub">通过 Linux.do 登录后，可以在这里生成下游调用用的 API Key。</div>
+      <div id="profile" class="grid"></div>
+      <div id="newKey" class="key-box"></div>
+    </section>
+    <section class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+        <strong>API Keys</strong>
+        <button class="btn btn-primary" onclick="createKey()">生成 API Key</button>
+      </div>
+      <div id="keys" style="margin-top:12px"></div>
+    </section>
+  </main>
+  <script src="/static/js/i18n.js?v={{APP_VERSION}}"></script>
+  <script src="/static/js/auth.js?v={{APP_VERSION}}"></script>
+  <script src="/static/js/toast.js?v={{APP_VERSION}}"></script>
+  <script src="/static/js/webui-header.js?v={{APP_VERSION}}"></script>
+  <script>
+    const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const profile = document.getElementById('profile');
+    const keys = document.getElementById('keys');
+    const newKey = document.getElementById('newKey');
+    let currentUser = null;
+
+    async function api(path, opts={}) {
+      const res = await fetch(`/user/api${path}`, { ...opts, headers: { 'Content-Type':'application/json', ...(opts.headers || {}) } });
+      if (res.status === 401) location.href = '/webui/login';
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    }
+
+    function render(data) {
+      currentUser = data.user;
+      const limit = Number(currentUser.quota_limit);
+      const used = Number(currentUser.quota_used || 0);
+      const remaining = limit < 0 ? '无限' : Math.max(0, limit - used);
+      profile.innerHTML = `
+        <div class="metric"><div class="sub">用户</div><b>${esc(currentUser.display_name || currentUser.username)}</b><div class="mono">${esc(currentUser.id)}</div></div>
+        <div class="metric"><div class="sub">WebChat</div><b>${currentUser.webchat_enabled ? '已开启' : '已关闭'}</b></div>
+        <div class="metric"><div class="sub">API</div><b>${currentUser.api_enabled ? '已开启' : '已关闭'}</b></div>
+        <div class="metric"><div class="sub">剩余额度</div><b>${esc(remaining)}</b><div class="sub">已用 ${esc(used)} / ${limit < 0 ? '无限' : esc(limit)}</div></div>
+      `;
+      const list = currentUser.api_keys || [];
+      keys.innerHTML = list.length ? list.map(k => `
+        <div class="metric" style="margin-bottom:8px">
+          <div><strong>${esc(k.name || 'default')}</strong></div>
+          <div class="mono">${esc(k.key_prefix)}...</div>
+          <div class="sub">创建：${new Date(k.created_at * 1000).toLocaleString()} · 最近使用：${k.last_used_at ? new Date(k.last_used_at * 1000).toLocaleString() : '-'}</div>
+          <button class="btn btn-ghost" onclick="deleteKey('${esc(k.id)}')">删除</button>
+        </div>
+      `).join('') : '<div class="sub">暂无 API Key</div>';
+    }
+
+    async function loadMe() {
+      render(await api('/me'));
+    }
+
+    async function createKey() {
+      if (!currentUser?.api_enabled) return showToast('你的 API 权限未开启', 'error');
+      const name = prompt('Key 名称', 'default') || 'default';
+      const data = await api('/api-keys', { method:'POST', body: JSON.stringify({ name }) });
+      newKey.style.display = 'block';
+      newKey.textContent = `新 API Key 只显示一次：\n${data.key}`;
+      await loadMe();
+    }
+
+    async function deleteKey(id) {
+      if (!confirm('确定删除这个 API Key？')) return;
+      await api(`/api-keys/${encodeURIComponent(id)}`, { method:'DELETE' });
+      await loadMe();
+    }
+
+    (async () => {
+      await renderWebuiHeader();
+      await loadMe();
+    })().catch(err => showToast(err.message || '加载失败', 'error'));
+  </script>
+</body>
+</html>

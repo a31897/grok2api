@@ -2,11 +2,11 @@
 
 import time
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
 from app.control.model import registry as model_registry
-from app.platform.auth.middleware import verify_webui_key
+from app.platform.auth.middleware import allowed_models_for_request, verify_webui_key
 from app.products.openai.router import chat_completions_endpoint
 from app.products.openai.schemas import ChatCompletionRequest
 
@@ -24,7 +24,8 @@ def _capability_name(spec) -> str:
 
 
 @router.get("/models")
-async def list_webui_models():
+async def list_webui_models(request: Request):
+    allowed = allowed_models_for_request(request)
     models = [
         {
             "id": spec.model_name,
@@ -35,13 +36,14 @@ async def list_webui_models():
             "capability": _capability_name(spec),
         }
         for spec in model_registry.list_enabled()
+        if allowed is None or spec.model_name in allowed
     ]
     return JSONResponse({"object": "list", "data": models})
 
 
 @router.post("/chat/completions")
-async def webui_chat_completions(req: ChatCompletionRequest):
-    return await chat_completions_endpoint(req)
+async def webui_chat_completions(req: ChatCompletionRequest, request: Request):
+    return await chat_completions_endpoint(req, request)
 
 
 __all__ = ["router"]

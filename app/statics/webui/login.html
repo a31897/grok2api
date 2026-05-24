@@ -23,6 +23,7 @@
       <div class="login-form">
         <input type="password" id="key" placeholder="访问密钥" data-i18n-placeholder="login.webuiPlaceholder" class="input" style="height:32px;font-size:12px">
         <button onclick="login()" class="btn btn-primary w-full" style="font-size:12px" data-i18n="login.enter">进入</button>
+        <button onclick="linuxdoLogin()" id="linuxdoBtn" class="btn btn-ghost w-full" style="font-size:12px;display:none" type="button">使用 Linux.do 登录</button>
       </div>
     </div>
   </div>
@@ -43,8 +44,14 @@
       } catch { showToast(t('common.connectionFailed'), 'error'); }
     }
 
+    function linuxdoLogin() {
+      location.href = '/auth/linuxdo/login?next=/webui/chat';
+    }
+
     (async () => {
       try {
+        const status = await fetch('/auth/linuxdo/status').then(r => r.ok ? r.json() : {enabled:false}).catch(() => ({enabled:false}));
+        document.getElementById('linuxdoBtn').style.display = status.enabled ? 'block' : 'none';
         const stored = await webuiKey.get();
         if (stored && await verifyKey(VERIFY, stored)) { location.href='/webui/chat'; return; }
         if (stored) webuiKey.clear();

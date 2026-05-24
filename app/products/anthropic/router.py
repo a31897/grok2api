@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from app.platform.auth.middleware import verify_api_key
+from app.platform.auth.middleware import enforce_model_access, verify_api_key
 from app.platform.errors import AppError, ValidationError
 from app.platform.logging.logger import logger
 from app.control.model import registry as model_registry
@@ -77,7 +77,7 @@ async def _safe_sse_anthropic(stream):
 # ---------------------------------------------------------------------------
 
 @router.post("/messages", tags=[_TAG_MESSAGES])
-async def messages_endpoint(req: MessagesRequest):
+async def messages_endpoint(req: MessagesRequest, request: Request):
     from app.platform.config.snapshot import get_config
 
     # Model validation
@@ -87,6 +87,7 @@ async def messages_endpoint(req: MessagesRequest):
             f"Model {req.model!r} does not exist or you do not have access to it.",
             param="model", code="model_not_found",
         )
+    enforce_model_access(request, req.model)
 
     if not req.messages:
         raise ValidationError("messages cannot be empty", param="messages")

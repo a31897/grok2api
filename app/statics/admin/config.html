@@ -403,6 +403,25 @@ const SCHEMA_DEF = [
         ]
       },
       {
+        title: 'Linux.do 登录', section: 'auth.linuxdo',
+        fields: [
+          { key: 'enabled', label: '启用 Linux.do 登录', type: 'bool', desc: '启用后 WebUI 登录页显示 Linux.do OAuth/OIDC 登录入口。' },
+          { key: 'client_id', label: 'Client ID', type: 'text', wide: true, desc: 'Linux.do Connect 应用的 Client ID。' },
+          { key: 'client_secret', label: 'Client Secret', type: 'password', wide: true, desc: 'Linux.do Connect 应用的 Client Secret。' },
+          { key: 'redirect_uri', label: '回调地址', type: 'text', wide: true, desc: '建议填写 https://你的域名/auth/linuxdo/callback；留空时使用 app_url 自动生成。' },
+          { key: 'minimum_level', label: '最低等级', type: 'number', desc: '低于该等级的 Linux.do 用户不能登录。' },
+        ]
+      },
+      {
+        title: '用户默认权限', section: 'users',
+        fields: [
+          { key: 'enabled', label: '启用用户 API Key', type: 'bool', desc: '即使未启用 Linux.do，也允许已存在用户 API Key 鉴权。' },
+          { key: 'default_quota_limit', label: '默认配额', type: 'number', desc: '新用户每个窗口的默认调用次数；-1 表示无限。' },
+          { key: 'default_quota_window_seconds', label: '默认配额窗口（秒）', type: 'number', desc: '默认配额重置周期。' },
+          { key: 'session_ttl_seconds', label: '登录有效期（秒）', type: 'number', desc: 'Linux.do 登录 Session Cookie 有效期。' },
+        ]
+      },
+      {
         title: '日志配置', titleKey: 'config.schema.groups.logging',
         section: 'logging',
         fields: [
