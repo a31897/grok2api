@@ -127,18 +127,19 @@ async def verify_webui_key(
     authorization: str | None = Header(default=None),
 ) -> None:
     """Validate Bearer token for webui endpoints."""
-    webui_key = get_webui_key()
-    session_token = request.cookies.get(SESSION_COOKIE)
-    ctx = await get_user_store().get_session(session_token) if is_user_auth_enabled() else None
+    ctx = await verify_webui_session_token(request.cookies.get(SESSION_COOKIE))
     if ctx is not None and ctx.user is not None:
-        _ensure_user_can_use_webchat(ctx.user)
         request.state.auth_context = ctx
         if request.method.upper() == "POST" and request.url.path.endswith("/chat/completions"):
             await _consume_user_quota(ctx.user["id"])
         return
 
+    if is_user_auth_enabled():
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Missing user session.")
+
+    webui_key = get_webui_key()
     if not webui_key:
-        if _legacy_webui_enabled() and not is_user_auth_enabled():
+        if _legacy_webui_enabled():
             request.state.auth_context = AuthContext(kind="webui_global", global_key=True)
             return
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "WebUI access is disabled.")
@@ -150,6 +151,17 @@ async def verify_webui_key(
     if not hmac.compare_digest(token, webui_key):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid authentication token.")
     request.state.auth_context = AuthContext(kind="webui_key", global_key=True)
+
+
+async def verify_webui_session_token(session_token: str | None) -> AuthContext | None:
+    """Return a WebUI user auth context when local user auth is enabled."""
+    if not is_user_auth_enabled():
+        return None
+    ctx = await get_user_store().get_session(session_token)
+    if ctx is None or ctx.user is None:
+        return None
+    _ensure_user_can_use_webchat(ctx.user)
+    return ctx
 
 
 async def verify_user_session(request: Request) -> AuthContext:
@@ -213,6 +225,7 @@ __all__ = [
     "verify_api_key",
     "verify_admin_key",
     "verify_webui_key",
+    "verify_webui_session_token",
     "verify_user_session",
     "get_admin_key",
     "get_webui_key",

@@ -2,10 +2,10 @@
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse, RedirectResponse
 
-from app.platform.auth.middleware import is_webui_enabled, verify_webui_key
+from app.platform.auth.middleware import is_user_auth_enabled, is_webui_enabled, verify_webui_key
 from app.platform.meta import get_project_version
 from app.platform.update_check import get_latest_release_info
 from .static_html import serve_static_html
@@ -82,9 +82,16 @@ async def webui_verify():
 
 
 @router.get("/webui/account", include_in_schema=False)
-async def webui_account():
+async def webui_account(request: Request):
     if not is_webui_enabled():
         raise HTTPException(404, "Not Found")
+    if is_user_auth_enabled():
+        try:
+            await verify_webui_key(request)
+        except HTTPException as exc:
+            if exc.status_code == 401:
+                return RedirectResponse("/webui/login")
+            raise
     return _serve_html("webui/account.html")
 
 

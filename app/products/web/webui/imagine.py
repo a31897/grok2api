@@ -6,12 +6,18 @@ import uuid
 from typing import Optional
 
 import orjson
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 
-from app.platform.auth.middleware import get_webui_key, is_webui_enabled
+from app.platform.auth.middleware import (
+    get_webui_key,
+    is_user_auth_enabled,
+    is_webui_enabled,
+    verify_webui_session_token,
+)
 from app.platform.config.snapshot import get_config
 from app.platform.logging.logger import logger
 from app.platform.runtime.clock import now_s
+from app.platform.users import SESSION_COOKIE
 from app.products.openai.images import resolve_aspect_ratio
 
 router = APIRouter()
@@ -45,7 +51,12 @@ def _extract_token(value: str | None) -> str:
     return raw
 
 
-def _is_allowed(token: str) -> bool:
+async def _is_allowed(websocket: WebSocket, token: str) -> bool:
+    if is_user_auth_enabled():
+        try:
+            return await verify_webui_session_token(websocket.cookies.get(SESSION_COOKIE)) is not None
+        except HTTPException:
+            return False
     webui_key = get_webui_key()
     if not webui_key:
         return is_webui_enabled()
@@ -61,7 +72,7 @@ def _websocket_token(websocket: WebSocket) -> str:
 
 @router.websocket("/imagine/ws")
 async def imagine_ws(websocket: WebSocket):
-    if not _is_allowed(_websocket_token(websocket)):
+    if not await _is_allowed(websocket, _websocket_token(websocket)):
         await websocket.close(code=1008)
         return
 
