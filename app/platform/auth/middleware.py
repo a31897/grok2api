@@ -138,7 +138,7 @@ async def verify_webui_key(
         return
 
     if not webui_key:
-        if _legacy_webui_enabled():
+        if _legacy_webui_enabled() and not is_user_auth_enabled():
             request.state.auth_context = AuthContext(kind="webui_global", global_key=True)
             return
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "WebUI access is disabled.")
